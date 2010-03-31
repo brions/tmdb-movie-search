@@ -1,3 +1,9 @@
+/**
+ * MovieSearch by Brion Swanson is licensed under a Creative Commons Attribution-Noncommercial 3.0 United States License.
+ * Based on a work at http://bidea.org/software/
+ *
+ * <a rel="license" href="http://creativecommons.org/licenses/by-nc/3.0/us/"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc/3.0/us/88x31.png" /></a><br /><span xmlns:dc="http://purl.org/dc/elements/1.1/" href="http://purl.org/dc/dcmitype/Text" property="dc:title" rel="dc:type">MovieSearch</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="http://bidea.org" property="cc:attributionName" rel="cc:attributionURL">Brion Swanson</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc/3.0/us/">Creative Commons Attribution-Noncommercial 3.0 United States License</a>.<br />Based on a work at <a xmlns:dc="http://purl.org/dc/elements/1.1/" href="http://bidea.org/software/" rel="dc:source">bidea.org</a>.
+ */
 package org.bidea.android.moviesearch;
 
 import android.app.Activity;
@@ -6,6 +12,8 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.view.ContextMenu;
 import android.view.MenuItem;
 import android.view.View;
@@ -15,22 +23,20 @@ import android.widget.EditText;
 
 public class FindMovie extends Activity {
 
-	private static final int PROGRESS_DIALOG = 0;
-	private static final int ERROR_DIALOG = 1;
+	private static final int PROGRESS_DIALOG = 0x0;
+	private static final int ERROR_DIALOG = 0x1;
 	
 	private Button searchButton;
 	private EditText searchText;
 	
-	private TMDbClient tmdbClient;
-	private String errorMessage = "";
+	private ProgressDialog pd;
 	
     /** Called when the activity is first created. */
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
+    public void onCreate(Bundle icicle) {
+        super.onCreate(icicle);
         
-        tmdbClient = new TMDbClient();
+        setContentView(R.layout.main);
         
         searchButton = (Button) findViewById(R.id.search_button);
         searchText = (EditText) findViewById(R.id.search_text);
@@ -38,47 +44,36 @@ public class FindMovie extends Activity {
         // register the search button
         searchButton.setOnClickListener(new View.OnClickListener() {
 			
+        	/** Create an anonymous click listener to show the progress dialog */
 			@Override
 			public void onClick(View v) {
-				if (!tmdbClient.findMovie(searchText.getText().toString())) {
-					showDialog(ERROR_DIALOG);
-				}
+				
+				// Prevent ANR timeouts by fetching the data on a separate thread
+				MovieFetcher fetcher = new MovieFetcher(new Handler() {
+					@Override
+					public void handleMessage(Message msg) {
+						pd.dismiss();
+						// do list Activity here
+					}
+				}, searchText.getText().toString());
+				
+				// kick it off
+				fetcher.start();
+
+				// Since there's nothing for the user to do just now, show a progress dialog
+	    		pd = ProgressDialog.show(FindMovie.this, "",
+	    				"Searching TMDb...", true);
 			}
 		});
     }
     
-    @Override
-    protected Dialog onCreateDialog(int id) {
-    	Dialog dialog;
-    	switch(id) {
-    	case PROGRESS_DIALOG:
-    		dialog = ProgressDialog.show(FindMovie.this, "",
-    				"Searching TMDb...", true);
-    		break;
-    	case ERROR_DIALOG:
-    		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    		builder.setMessage(tmdbClient.getLastError())
-    			.setCancelable(true)
-    			.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						dialog.dismiss();
-					}
-				});
-    		dialog = builder.create();
-    		break;
-    	default:
-    		dialog = null;
-    	}
-    	return dialog;
-    }
     
+        
 	/* (non-Javadoc)
 	 * @see android.app.Activity#onContextItemSelected(android.view.MenuItem)
 	 */
 	@Override
 	public boolean onContextItemSelected(MenuItem item) {
-		// TODO Auto-generated method stub
 		return super.onContextItemSelected(item);
 	}
 
@@ -88,7 +83,6 @@ public class FindMovie extends Activity {
 	@Override
 	public void onCreateContextMenu(ContextMenu menu, View v,
 			ContextMenuInfo menuInfo) {
-		// TODO Auto-generated method stub
 		super.onCreateContextMenu(menu, v, menuInfo);
 	}
 
@@ -97,7 +91,6 @@ public class FindMovie extends Activity {
 	 */
 	@Override
 	protected void onPause() {
-		// TODO Auto-generated method stub
 		super.onPause();
 	}
 
@@ -106,9 +99,6 @@ public class FindMovie extends Activity {
 	 */
 	@Override
 	protected void onSaveInstanceState(Bundle outState) {
-		// TODO Auto-generated method stub
 		super.onSaveInstanceState(outState);
 	}
-    
-	
 }
