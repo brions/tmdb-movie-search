@@ -6,10 +6,13 @@
  */
 package org.bidea.android.moviesearch;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -57,7 +60,7 @@ public class MovieFetcher extends Thread {
 	 * Orders the results by rank + score and breaks out the title/poster
 	 */
 	private void sortResults() {
-		TreeMap<Double, Integer> orderedMap = new TreeMap<Double, Integer>();
+		HashMap<Double, Integer> orderedMap = new HashMap<Double, Integer>();
 		
 		for (int pos=0; pos<movieObjects.length; pos++){
 			try {
@@ -68,11 +71,15 @@ public class MovieFetcher extends Thread {
 			}
 		}
 		
-		// run through the sorted map and re-build the movieObjects
+		// Sort the keys of the maps
+		List<Double> sortedKeys = new LinkedList<Double>(orderedMap.keySet());
+		Collections.sort(sortedKeys);
+		
+		// run through the list of keys and place them into a sorted list of movies
 		LinkedList<JSONObject> sortedMovies = new LinkedList<JSONObject>();
-		for ( Map.Entry<Double, Integer> entry : orderedMap.entrySet() )
+		for ( Double key : sortedKeys )
 		{
-			sortedMovies.add(movieObjects[entry.getValue().intValue()]);
+			sortedMovies.add(movieObjects[orderedMap.get(key)]);
 		}
 		
 		//DEBUG

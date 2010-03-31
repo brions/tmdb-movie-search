@@ -45,7 +45,6 @@ public class FindMovie extends Activity {
         searchButton.setOnClickListener(new View.OnClickListener() {
 			
         	/** Create an anonymous click listener to show the progress dialog */
-			@Override
 			public void onClick(View v) {
 				
 				// Prevent ANR timeouts by fetching the data on a separate thread
