@@ -11,6 +11,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -30,6 +31,7 @@ public class FindMovie extends Activity {
 	private EditText searchText;
 	
 	private ProgressDialog pd;
+	private MovieFetcher fetcher;
 	
     /** Called when the activity is first created. */
     @Override
@@ -48,11 +50,10 @@ public class FindMovie extends Activity {
 			public void onClick(View v) {
 				
 				// Prevent ANR timeouts by fetching the data on a separate thread
-				MovieFetcher fetcher = new MovieFetcher(new Handler() {
+				fetcher = new MovieFetcher(new Handler() {
 					@Override
 					public void handleMessage(Message msg) {
-						pd.dismiss();
-						// do list Activity here
+						doHandleMessage();
 					}
 				}, searchText.getText().toString());
 				
@@ -66,7 +67,16 @@ public class FindMovie extends Activity {
 		});
     }
     
-    
+	/**
+	 * Dismiss the dialog and launch the list activity
+	 */
+    private void doHandleMessage() {
+		pd.dismiss();
+		// launch the ListMatches activity
+		Intent intent = new Intent(FindMovie.this, ListMatches.class);
+		intent.putExtra("titles", fetcher.getMovieTitles());
+		startActivity(intent);
+    }
         
 	/* (non-Javadoc)
 	 * @see android.app.Activity#onContextItemSelected(android.view.MenuItem)

@@ -18,7 +18,9 @@
 
     
 
-<uses-library></uses-library>
+
+<activity android:screenOrientation="sensor" android:launchMode="standard" android:name=".ListMatches">
+</activity>
 </application>
 
 

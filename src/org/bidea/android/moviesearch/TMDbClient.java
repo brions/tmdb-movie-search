@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.util.Arrays;
-import java.util.Iterator;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -52,12 +51,6 @@ public class TMDbClient {
 	 */
 	public static JSONObject[] findMovie(String title) {
 
-//		try {
-//			Thread.sleep(5000);
-//			return;
-//		} catch (InterruptedException e1) {
-//			Log.d(TMDbClient.class.getSimpleName(), e1.getMessage());
-//		}
 		JSONObject[] results = null;
 		
 		// prepare the request
@@ -65,6 +58,7 @@ public class TMDbClient {
 
 		HttpResponse response = null;
 		try {
+			// make the call and capture the response
 			response = http.execute(get);
 
 			// examine response
@@ -83,7 +77,7 @@ public class TMDbClient {
 				
 				while (is.read(buffer, 0, 512) > -1) {
 					String buff = new String(buffer, "UTF-8").trim();
-					Log.d(TMDbClient.class.getSimpleName(), "read: " + buff);
+//					Log.d(TMDbClient.class.getSimpleName(), "read: " + buff);
 					sb.append(buff);
 					Arrays.fill(buffer, (byte)0);
 				}
@@ -93,20 +87,20 @@ public class TMDbClient {
 				
 				try {
 					// parse the JSONObjects out of the document until we have no more
-					
 					JSONArray movies = new JSONArray(parser);
+					
 					int numMovies = movies.length();
 					results = new JSONObject[numMovies];
 					
 					for (int pos=0; pos < numMovies; pos++) {
-						JSONObject movie = (JSONObject)movies.get(pos);
+						Object positionObj = movies.get(pos);
 
-						results[pos] = movie;
-//						// print out the JSONObject and its attributes
-//						for (Iterator<String> keys = movie.keys(); keys.hasNext(); ) {
-//							String key = keys.next();
-//							Log.d(TMDbClient.class.getSimpleName(), key+":"+movie.get(key));
-//						}
+						if (positionObj instanceof JSONObject) {
+							results[pos] = (JSONObject)movies.get(pos);
+						} else {
+							// this is not a JSONObject, so create a JSONArray from the string
+							results[pos] = new JSONObject("{"+positionObj.toString()+":\"\"}");
+						}
 					}
 				} catch (JSONException e) {
 					Log.e(TMDbClient.class.getSimpleName(), "Error parsing JSON: "+e.getMessage(), e);

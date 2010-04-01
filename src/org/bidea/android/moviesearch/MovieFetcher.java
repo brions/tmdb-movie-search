@@ -10,9 +10,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,9 +29,9 @@ public class MovieFetcher extends Thread {
 	/** The following three arrays are associated by position */
 	/** Note: three native arrays are faster than a set of nested Maps
 	 *  or a multi-dimensional array */
-	private JSONObject[] movieObjects;
-	private String[] moviePosters;
-	private String[] movieTitles;
+	private JSONObject[] movieObjects = null;
+	private String[] moviePosters = null;
+	private String[] movieTitles = null;
 	
 	
 	/**
@@ -50,64 +47,148 @@ public class MovieFetcher extends Thread {
 	
 	@Override
 	public void run() {
-		TMDbClient.prepare();
+		// clear out any previous search
+		prepare();
+		
+		// find the movie(s) if any
 		movieObjects = TMDbClient.findMovie(searchString);
+
+		//create the other (empty?) lists
+		moviePosters = new String[movieObjects.length];
+		movieTitles = new String[movieObjects.length];
+		
+		// sort the results
 		sortResults();
+		
+		// notify the calling thread that we're complete
 		handler.sendEmptyMessage(0);
+	}
+	
+	/**
+	 * @return the list of JSONObjects representing the movies
+	 */
+	public JSONObject[] getMoviesObjects() {
+		return movieObjects == null ? new JSONObject[0] : movieObjects;
+	}
+	
+	/**
+	 * @return the list of movie poster URLs
+	 */
+	public String[] getMoviePosters() {
+		return moviePosters == null ? new String[0] : movieTitles;
+	}
+	
+	/**
+	 * @return the list of movie titles
+	 */
+	public String[] getMovieTitles() {
+		return movieTitles == null ? new String[0] : movieTitles;
+	}
+	
+	/**
+	 * Clean things up before a new search
+	 */
+	private void prepare() {
+		TMDbClient.prepare();
+		movieObjects = null;
+		moviePosters = null;
+		movieTitles = null;
 	}
 	
 	/**
 	 * Orders the results by rank + score and breaks out the title/poster
 	 */
 	private void sortResults() {
-		HashMap<Double, Integer> orderedMap = new HashMap<Double, Integer>();
+		HashMap<SortRating, Integer> orderedMap = new HashMap<SortRating, Integer>();
 		
 		for (int pos=0; pos<movieObjects.length; pos++){
 			try {
-				orderedMap.put(calculateOrder(movieObjects[pos].getString("score"), movieObjects[pos].getString("rating"), movieObjects[pos].getString("popularity")), 
-							Integer.valueOf(pos));
+				orderedMap.put(new SortRating(movieObjects[pos].getDouble("score"), 
+											  movieObjects[pos].getDouble("rating"), 
+											  movieObjects[pos].getDouble("popularity")), 
+							   Integer.valueOf(pos));
 			} catch (JSONException ex) {
 				Log.e(MovieFetcher.class.getSimpleName(), "failed to sort results: " + ex.getMessage());
 			}
 		}
 		
 		// Sort the keys of the maps
-		List<Double> sortedKeys = new LinkedList<Double>(orderedMap.keySet());
+		List<SortRating> sortedKeys = new LinkedList<SortRating>(orderedMap.keySet());
 		Collections.sort(sortedKeys);
 		
 		// run through the list of keys and place them into a sorted list of movies
 		LinkedList<JSONObject> sortedMovies = new LinkedList<JSONObject>();
-		for ( Double key : sortedKeys )
+		for ( SortRating key : sortedKeys )
 		{
 			sortedMovies.add(movieObjects[orderedMap.get(key)]);
 		}
 		
-		//DEBUG
-		Log.d(MovieFetcher.class.getSimpleName(), "Movie order before sorting...");
-		for ( JSONObject movie : movieObjects ) {
-			try {
-				Log.d(MovieFetcher.class.getSimpleName(), movie.getString("name"));
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-		}
 		sortedMovies.toArray(movieObjects);
-		//DEBUG
-		Log.d(MovieFetcher.class.getSimpleName(), "Movie order AFTER sorting...");
+		
+		int position = 0;
 		for ( JSONObject movie : movieObjects ) {
 			try {
-				Log.d(MovieFetcher.class.getSimpleName(), movie.getString("name"));
+				if (movie != null) {
+					Log.d(MovieFetcher.class.getSimpleName(), movie.getString("name"));
+					// put the poster URL and title in their respective lists
+					movieTitles[position] = movie.getString("name");
+					moviePosters[position] = movie.getJSONArray("posters").getJSONObject(0).getJSONObject("image").getString("url");
+				}
 			} catch (JSONException e) {
-				e.printStackTrace();
+				Log.i(MovieFetcher.class.getSimpleName(), e.getMessage());
 			}
+			position++;
 		}
 	}
 	
-	private Double calculateOrder(String score, String ranking, String popularity) {
-		Double dScore = Double.valueOf(score);
-		Double dRank = Double.valueOf(ranking);
-		Double dPop = Double.valueOf(popularity);
+	/**
+	 * Comparable object to deal with rating ties.
+	 */
+	private class SortRating implements Comparable<SortRating> {
+		double score;
+		double rank;
+		double popularity;
 		
-		return Double.valueOf(dScore.doubleValue() + dRank.doubleValue() + dPop.doubleValue());
+		/**
+		 * Create a new SortRating with three rating components
+		 */
+		SortRating(double score, double rank, double popularity) {
+			this.score = score;
+			this.rank = rank;
+			this.popularity = popularity;
+		}
+		
+		/**
+		 * Compare in ascending order: score, score + rank, score + rank + popularity
+		 */
+		public int compareTo(SortRating another) {
+			int rating = (int)(another.score - this.score);
+			
+			if (rating == 0) {
+				rating = (int)((another.score + another.rank) - (this.score + this.rank));
+			}
+			
+			if (rating == 0) {
+				rating = (int)((another.score + another.rank + another.popularity) - 
+						 (this.score + this.rank + this.popularity));
+			}
+			
+			return rating;
+		}
+		
+		// make sure SortRatings are equal if they have identical values
+		@Override
+		public boolean equals(Object o) {
+			if (o==null || !(o instanceof SortRating))
+				return false;
+			SortRating other = (SortRating)o;
+			return (other.score == score && other.rank == rank && other.popularity == popularity);
+		}
+		
+		// make sure identical values hash to the same thing
+		@Override
+		public int hashCode() {
+			return (""+score+rank+popularity).hashCode();
+		}
 	}
 }
