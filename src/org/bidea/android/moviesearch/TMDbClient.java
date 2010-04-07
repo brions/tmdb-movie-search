@@ -5,6 +5,8 @@ package org.bidea.android.moviesearch;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Arrays;
 
@@ -21,19 +23,47 @@ import org.json.JSONTokener;
 import android.util.Log;
 
 /**
- * Searches themoviedb.org for a movie by title and updates the provided SQLite
- * database with the results.
+ * Searches themoviedb.org for a movie by title and returns a list of results.
+ * 
+ * By default, this client uses the TMDb 2.1 API JSON service.
  */
 public class TMDbClient {
-	private static final String TMDB_BASE_URL="http://api.themoviedb.org/2.1/Movie.search/en/json/c94816c61f718f3c07d74f59a2055412/";
+	private static final String TMDB_BASE_URL="http://api.themoviedb.org/2.1/Movie.search/en/json/";
 	
 	private static DefaultHttpClient http;
+	private static String tmdb_url = TMDB_BASE_URL;
 	private static String lastError = "";
 
 	static {
 		http = new DefaultHttpClient();
 	}
 
+	/**
+	 * Sets the URL of the API service.
+	 * Do not include the API key or the search query.
+	 *  
+	 * @param theUrl the URL of the API service without the API key or query string
+	 */
+	public static void setTmdbUrl(String theUrl) {
+		if (theUrl != null) {
+			try {
+				URL url = new URL(theUrl);
+				tmdb_url = url.toExternalForm();
+			} catch (MalformedURLException ex) {
+				Log.w(TMDbClient.class.getSimpleName(), "Attempted to set invalid URL");
+			}
+		}
+	}
+	
+	/**
+	 * Return the current TMDb URL.
+	 * 
+	 * @return the URL string.
+	 */
+	public static String getTmdbUrl() {
+		return tmdb_url;
+	}
+	
 	/**
 	 * Clear out previous search information in preparation for another search.
 	 * 
@@ -49,12 +79,12 @@ public class TMDbClient {
 	 * @param title	the <code>title</code> to search for.
 	 * @return <code>true</code> if the database was updated, <code>false</code> otherwise.
 	 */
-	public static JSONObject[] findMovie(String title) {
+	public static JSONObject[] findMovie(String title, String apiKey) {
 
 		JSONObject[] results = null;
 		
 		// prepare the request
-		HttpGet get = new HttpGet(TMDB_BASE_URL + URLEncoder.encode(title));
+		HttpGet get = new HttpGet(tmdb_url + apiKey + "/" + URLEncoder.encode(title));
 
 		HttpResponse response = null;
 		try {

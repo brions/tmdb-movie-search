@@ -8,6 +8,6 @@
 	
 	<string name="new_search">New Search</string>
 <string name="tmdb_query">http://api.themoviedb.org/2.1/Movie.search/en/json/</string>
-<string name="tmdb_apikey">c94816c61f718f3c07d74f59a2055412</string>
+<string name="tmdb_apikey">KEY_GOES_HERE</string>
 
 </resources>

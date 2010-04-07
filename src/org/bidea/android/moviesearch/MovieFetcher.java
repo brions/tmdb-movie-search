@@ -25,6 +25,7 @@ public class MovieFetcher extends Thread {
 	
 	private Handler handler = null;
 	private String searchString = "";
+	private String apiKey = "";
 	
 	/** The following three arrays are associated by position */
 	/** Note: three native arrays are faster than a set of nested Maps
@@ -40,9 +41,10 @@ public class MovieFetcher extends Thread {
 	 * @param handler the handler to notify when finished running
 	 * @param searchString the string to search for
 	 */
-	public MovieFetcher(Handler handler, String searchString) {
+	public MovieFetcher(Handler handler, String searchString, String apiKey) {
 		this.handler = handler;
 		this.searchString = searchString;
+		this.apiKey = apiKey;
 	}
 	
 	@Override
@@ -51,7 +53,7 @@ public class MovieFetcher extends Thread {
 		prepare();
 		
 		// find the movie(s) if any
-		movieObjects = TMDbClient.findMovie(searchString);
+		movieObjects = TMDbClient.findMovie(searchString, apiKey);
 
 		//create the other (empty?) lists
 		moviePosters = new String[movieObjects.length];

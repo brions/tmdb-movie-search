@@ -51,11 +51,13 @@ public class FindMovie extends Activity {
 				
 				// Prevent ANR timeouts by fetching the data on a separate thread
 				fetcher = new MovieFetcher(new Handler() {
-					@Override
-					public void handleMessage(Message msg) {
-						doHandleMessage();
-					}
-				}, searchText.getText().toString());
+						@Override
+						public void handleMessage(Message msg) {
+							doHandleMessage();
+						}
+					}, 
+					searchText.getText().toString(), 
+					getString(R.string.tmdb_apikey));
 				
 				// kick it off
 				fetcher.start();
